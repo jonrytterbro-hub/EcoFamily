@@ -2,7 +2,7 @@
 <html lang="sv">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EcoFamily</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -11,10 +11,388 @@
 <body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen">
 <div id="app"></div>
 <div id="modal"></div>
+
 <script>
-firebase.initializeApp({apiKey:"AIzaSyA8xpPsK_E2hXgU5D5qw612SFA5vIVOTGU",authDomain:"ecofamily-ffa0a.firebaseapp.com",databaseURL:"https://ecofamily-ffa0a-default-rtdb.europe-west1.firebasedatabase.app",projectId:"ecofamily-ffa0a",storageBucket:"ecofamily-ffa0a.firebasestorage.app",messagingSenderId:"325072897213",appId:"1:325072897213:web:b2c6fa856b129e267963d4"});
-const db=firebase.database();
-window.app={fc:null,u:null,d:{fam:[{id:1,name:'Jon',color:'blue'},{id:2,name:'Johanna',color:'purple'},{id:3,name:'Linnéa',color:'pink'},{id:4,name:'Rafael',color:'green'},{id:5,name:'Alicia',color:'orange'}],meals:[],acts:[],fut:[],wish:[],shop:{food:[],basics:[],big:[]}},v:'week',wo:0,init(){const f=localStorage.getItem('fc'),u=localStorage.getItem('u');if(f&&u){this.fc=f;this.u=JSON.parse(u);this.load().then(()=>this.listen());this.r()}else this.showLogin()},showLogin(){document.getElementById('app').innerHTML='<div class="max-w-md mx-auto mt-20"><div class="bg-white rounded-2xl shadow-2xl p-8"><h1 class="text-3xl font-bold text-center mb-2">🏡 EcoFamily</h1><p class="text-center text-gray-600 mb-8">Familjeplaneraren</p><div id="lc"><button onclick="app.setup()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl mb-3">🆕 Skapa familj</button><button onclick="app.join()" class="w-full bg-green-600 text-white font-bold py-4 rounded-xl">👨‍👩‍👧‍👦 Gå med</button></div></div></div>'},setup(){document.getElementById('lc').innerHTML='<input id="fci" placeholder="Familje-kod" class="w-full p-3 border-2 rounded-xl mb-3 uppercase" value="ANDERSSON2026"><select id="ms" class="w-full p-3 border-2 rounded-xl mb-3">'+this.d.fam.map(m=>'<option value="'+m.id+'">'+m.name+'</option>').join('')+'</select><button onclick="app.createFam()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl mb-3">Skapa →</button><button onclick="app.showLogin()" class="w-full bg-gray-200 font-bold py-3 rounded-xl">← Tillbaka</button>'},join(){document.getElementById('lc').innerHTML='<input id="jfc" placeholder="Familje-kod" class="w-full p-3 border-2 rounded-xl mb-3 uppercase"><select id="jms" class="w-full p-3 border-2 rounded-xl mb-3">'+this.d.fam.map(m=>'<option value="'+m.id+'">'+m.name+'</option>').join('')+'</select><button onclick="app.joinFam()" class="w-full bg-green-600 text-white font-bold py-4 rounded-xl mb-3">Gå med →</button><button onclick="app.showLogin()" class="w-full bg-gray-200 font-bold py-3 rounded-xl">← Tillbaka</button>'},async createFam(){const fc=document.getElementById('fci').value.trim().toUpperCase(),mid=parseInt(document.getElementById('ms').value);if(!fc||fc.length<6){alert('Kod minst 6 tecken');return}const s=await db.ref('fam/'+fc).once('value');if(s.exists()){alert('Kod används');return}this.fc=fc;this.u=this.d.fam.find(m=>m.id===mid);localStorage.setItem('fc',fc);localStorage.setItem('u',JSON.stringify(this.u));await db.ref('fam/'+fc).set({cr:Date.now(),d:this.d});this.load().then(()=>this.listen());this.r()},async joinFam(){const fc=document.getElementById('jfc').value.trim().toUpperCase(),mid=parseInt(document.getElementById('jms').value);if(!fc){alert('Ange kod');return}const s=await db.ref('fam/'+fc).once('value');if(!s.exists()){alert('Ej funnen');return}this.fc=fc;this.u=this.d.fam.find(m=>m.id===mid);localStorage.setItem('fc',fc);localStorage.setItem('u',JSON.stringify(this.u));this.load().then(()=>this.listen());this.r()},logout(){if(confirm('Logga ut?'))localStorage.clear();location.reload()},async load(){if(!this.fc)return;const s=await db.ref('fam/'+this.fc+'/d').once('value');if(s.exists())this.d={...this.d,...s.val()}},listen(){if(!this.fc)return;db.ref('fam/'+this.fc+'/d').on('value',s=>{if(s.exists()){this.d={...this.d,...s.val()};this.r()}})},async save(){if(this.fc)await db.ref('fam/'+this.fc+'/d').set(this.d)},wk(o){const d=[],t=new Date(),day=t.getDay(),diff=t.getDate()-day+(day===0?-6:1),m=new Date(t.setDate(diff+o*7));for(let i=0;i<7;i++){const dt=new Date(m);dt.setDate(m.getDate()+i);d.push(dt)}return d},fmt(d){return d.toISOString().split('T')[0]},dn(d){return['Sön','Mån','Tis','Ons','Tor','Fre','Lör'][d.getDay()]},parse(t){const r={pid:null,pn:'',dt:null,dyn:'',tm:null,ti:'',at:null,conf:0},l=t.toLowerCase();for(const p of this.d.fam)if(l.includes(p.name.toLowerCase())){r.pid=p.id;r.pn=p.name;r.conf+=25;break}const mo={'januari':0,'februari':1,'mars':2,'april':3,'maj':4,'juni':5,'juli':6,'augusti':7,'september':8,'oktober':9,'november':10,'december':11};for(const m in mo)if(l.includes(m)){const dm=t.match(/(\d{1,2})\s*(?:januari|februari|mars|april|maj|juni|juli|augusti|september|oktober|november|december)/i);if(dm){const day=parseInt(dm[1]),ym=t.match(/20\d{2}/),year=ym?parseInt(ym[0]):new Date().getFullYear();r.dt=this.fmt(new Date(year,mo[m],day));r.conf+=30;break}}if(!r.dt){const days=['måndag','tisdag','onsdag','torsdag','fredag','lördag','söndag'];let di=-1;for(let i=0;i<days.length;i++)if(l.includes(days[i])){di=i;r.dyn=days[i];r.conf+=20;break}if(di>=0){const today=new Date(),cd=today.getDay(),td=di+1;let du=td-cd;if(du<=0)du+=7;const tdate=new Date(today);tdate.setDate(today.getDate()+du);r.dt=this.fmt(tdate)}}const tm=l.match(/(\d{1,2})[:\.,]?(\d{2})?/);if(tm){r.tm=tm[1].padStart(2,'0')+':'+(tm[2]||'00').padStart(2,'0');r.conf+=20}const kw={'basket':'Basketträning','fotboll':'Fotbollsträning','träning':'Träning','match':'Match','gym':'Gym','padel':'Padel','tandläkare':'Tandläkare','läkare':'Läkare'};for(const k in kw)if(l.includes(k)){r.at=k;r.ti=kw[k];r.conf+=15;break}return r},showPaste(){document.getElementById('modal').innerHTML='<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onclick="app.closeM()"><div class="bg-white rounded-2xl p-4 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()"><h3 class="text-xl font-bold mb-4">📋 Smart Paste</h3><textarea id="pi" class="w-full h-32 p-4 border-2 rounded-xl text-sm" placeholder="Linnéa basket tisdag 18:00"></textarea><div class="flex gap-2 mt-4"><button onclick="app.closeM()" class="flex-1 px-4 py-3 bg-gray-200 rounded-xl font-bold text-sm">Avbryt</button><button onclick="app.procPaste()" class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm">Analysera →</button></div><div id="pr" class="mt-6"></div></div></div>'},procPaste(){const t=document.getElementById('pi').value;if(!t.trim())return;const p=this.parse(t);let h='<div class="bg-green-50 border-2 border-green-300 rounded-xl p-4"><div class="font-bold text-green-800 mb-3">✨ Ny aktivitet! ('+p.conf+'%)</div><div class="space-y-2 mb-4 text-sm"><div><label class="block font-bold mb-1">Person:</label><select id="ep" class="w-full p-2 border-2 rounded-lg">';for(const f of this.d.fam)h+='<option value="'+f.id+'"'+(f.id===p.pid?' selected':'')+'>'+f.name+'</option>';h+='</select></div><div><label class="block font-bold mb-1">Aktivitet:</label><input type="text" id="et" value="'+(p.ti||'')+'" class="w-full p-2 border-2 rounded-lg"></div><div><label class="block font-bold mb-1">Datum:</label><input type="date" id="ed" value="'+(p.dt||'')+'" class="w-full p-2 border-2 rounded-lg"></div><div><label class="block font-bold mb-1">Tid:</label><input type="time" id="eti" value="'+(p.tm||'12:00')+'" class="w-full p-2 border-2 rounded-lg"></div></div><div class="text-xs bg-blue-50 p-2 rounded mb-3">AI: '+(p.dyn||'ej')+' → '+(p.dt||'ej')+' • '+(p.tm||'ej')+' • '+(p.pn||'ej')+'</div><button onclick="app.confPaste()" class="w-full px-4 py-3 bg-green-600 text-white rounded-xl font-bold text-sm">✓ Lägg till</button></div>';document.getElementById('pr').innerHTML=h},async confPaste(){const pid=parseInt(document.getElementById('ep').value),ti=document.getElementById('et').value,dt=document.getElementById('ed').value,tm=document.getElementById('eti').value;if(!dt||!ti){alert('Datum/aktivitet saknas');return}this.d.acts.push({id:Date.now().toString(),title:ti,person:pid,date:dt,time:tm,by:this.u.name});await this.save();this.closeM();this.r()},closeM(){document.getElementById('modal').innerHTML=''},async del(type,id){if(confirm('Ta bort?')){this.d[type]=this.d[type].filter(x=>x.id!==id);await this.save();this.r()}},async delS(type,id){if(confirm('Ta bort?')){this.d.shop[type]=this.d.shop[type].filter(x=>x.id!==id);await this.save();this.r()}},async togS(type,id){const i=this.d.shop[type].find(x=>x.id===id);if(i){i.done=!i.done;await this.save();this.r()}},async addA(){const t=prompt('Aktivitet:');if(!t)return;const p=parseInt(prompt('Vem? 1-5'));const d=prompt('Datum:');const ti=prompt('Tid:','17:00');this.d.acts.push({id:Date.now().toString(),title:t,person:p,date:d,time:ti});await this.save();this.r()},async addM(){const d=prompt('Rätt:');if(!d)return;const p=parseInt(prompt('Port:','5')),dt=prompt('Datum:'),t=prompt('Tid:','19:00'),i=prompt('Ingr:');this.d.meals.push({id:Date.now().toString(),dish:d,port:p,date:dt,time:t,ings:i});await this.save();this.r()},async addW(){const d=prompt('Rätt:');if(!d)return;const p=parseInt(prompt('Vem? 1-5'));this.d.wish.push({id:Date.now().toString(),dish:d,person:p});await this.save();this.r()},async planW(id){const w=this.d.wish.find(x=>x.id===id),d=prompt('Datum?');if(d){this.d.meals.push({id:Date.now().toString(),dish:w.dish,port:5,date:d,time:'19:00'});this.d.wish=this.d.wish.filter(x=>x.id!==id);await this.save();this.v='meals';this.r()}},async addS(type){const n=prompt('Vad?');if(!n)return;const a=prompt('Mängd:'),b=type==='big'?prompt('Budget:'):null;this.d.shop[type].push({id:Date.now().toString(),name:n,amt:a,bud:b,done:false});await this.save();this.r()},async addF(){const t=prompt('Vad:');if(!t)return;const d=prompt('Datum:'),ti=prompt('Tid:'),p=prompt('Vem? 1-5:');this.d.fut.push({id:Date.now().toString(),title:t,date:d,time:ti,person:p?parseInt(p):null});await this.save();this.r()},async genS(){const w=this.wk(this.wo),m=this.d.meals.filter(x=>{const md=new Date(x.date);return md>=w[0]&&md<=w[6]}),ings=new Set();m.forEach(x=>{if(x.ings)x.ings.split(',').forEach(i=>ings.add(i.trim()))});this.d.shop.food=Array.from(ings).map(i=>({id:Date.now().toString()+Math.random(),name:i,done:false}));await this.save();this.v='shop';this.r()},sv(v){this.v=v;this.r()},r(){const w=this.wk(this.wo);let h='<div class="max-w-6xl mx-auto p-2"><div class="bg-white rounded-xl shadow p-3 mb-3"><div class="flex justify-between items-center mb-2"><div><h1 class="font-bold">EcoFamily</h1><p class="text-xs text-gray-600">'+w[0].getDate()+'/'+(w[0].getMonth()+1)+'-'+w[6].getDate()+'/'+(w[6].getMonth()+1)+'</p></div><div class="flex gap-1"><button onclick="app.wo--;app.r()" class="px-2 py-1 bg-gray-200 rounded text-xs">←</button><button onclick="app.wo=0;app.r()" class="px-2 py-1 bg-blue-600 text-white rounded text-xs">Nu</button><button onclick="app.wo++;app.r()" class="px-2 py-1 bg-gray-200 rounded text-xs">→</button></div></div><div class="flex items-center justify-between mb-2"><div class="flex gap-1">';for(const p of this.d.fam)h+='<span class="px-2 py-0.5 bg-'+p.color+'-100 text-'+p.color+'-700 rounded-full text-xs">'+p.name+'</span>';h+='</div><button onclick="app.logout()" class="px-2 py-1 bg-gray-200 rounded text-xs">Ut</button></div><div class="p-2 bg-'+this.u.color+'-50 rounded mb-2"><div class="text-xs font-bold">'+this.u.name+' • '+this.fc+'</div></div><button onclick="app.showPaste()" class="w-full px-3 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl font-bold text-xs">📋 Smart Paste</button></div><div class="bg-white rounded-xl shadow p-2 mb-3 flex gap-1 overflow-x-auto">';const tabs=[{id:'week',n:'Vecka',i:'📅'},{id:'meals',n:'Mat',i:'🍽️'},{id:'wish',n:'Önsk',i:'⭐',b:this.d.wish.length},{id:'shop',n:'Inköp',i:'🛒'},{id:'fut',n:'Fram',i:'📆',b:this.d.fut.length}];for(const t of tabs){const a=this.v===t.id;h+='<button onclick="app.sv(\''+t.id+'\')" class="px-2 py-1 rounded text-xs whitespace-nowrap '+(a?'bg-blue-600 text-white':'bg-gray-100')+'">'+t.i+' <span class="hidden sm:inline">'+t.n+'</span>'+(t.b?' <span class="bg-red-500 text-white px-1 rounded-full">'+t.b+'</span>':'')+'</button>'}h+='</div>';if(this.v==='week'){h+='<div class="space-y-2">';for(const day of w){const ds=this.fmt(day),meals=this.d.meals.filter(m=>m.date===ds),acts=this.d.acts.filter(a=>a.date===ds);h+='<div class="bg-white rounded-xl shadow p-3"><div class="flex justify-between mb-2"><h3 class="font-bold text-sm">'+this.dn(day)+' '+day.getDate()+'</h3><button onclick="app.addA()" class="px-2 py-1 bg-blue-600 text-white rounded text-xs">+</button></div>';for(const m of meals)h+='<div class="bg-orange-50 border rounded p-2 mb-1 flex justify-between text-xs"><div><b>'+m.dish+'</b><div class="text-gray-600">'+m.port+' port</div></div><button onclick="app.del(\'meals\',\''+m.id+'\')" class="text-red-600">✕</button></div>';for(const a of acts){const p=this.d.fam.find(f=>f.id===a.person);if(p)h+='<div class="bg-'+p.color+'-50 border rounded p-2 mb-1 flex justify-between text-xs"><div><b>'+a.title+'</b><div class="text-gray-600">'+a.time+' • '+p.name+'</div></div><button onclick="app.del(\'acts\',\''+a.id+'\')" class="text-red-600">✕</button></div>'}if(!meals.length&&!acts.length)h+='<p class="text-gray-400 text-xs text-center py-2">Inget</p>';h+='</div>'}h+='</div>'}else if(this.v==='meals'){h+='<div class="bg-white rounded-xl shadow p-3"><div class="flex justify-between mb-3"><h2 class="font-bold">Mat</h2><button onclick="app.addM()" class="px-3 py-2 bg-orange-600 text-white rounded text-sm">+ Rätt</button></div>';if(this.d.meals.length){for(const m of this.d.meals)h+='<div class="bg-orange-50 border-2 rounded-xl p-2 mb-2 flex justify-between text-sm"><div><b>'+m.dish+'</b><div class="text-xs text-gray-600">'+m.port+' • '+m.date+'</div></div><button onclick="app.del(\'meals\',\''+m.id+'\')" class="text-red-600">✕</button></div>';h+='<button onclick="app.genS()" class="w-full mt-3 bg-green-600 text-white py-2 rounded-xl font-bold text-sm">🛒 Uppdatera</button>'}else h+='<p class="text-gray-400 text-center py-6 text-sm">Tom</p>';h+='</div>'}else if(this.v==='wish'){h+='<div class="bg-white rounded-xl shadow p-3"><div class="flex justify-between mb-3"><h2 class="font-bold">Önskn</h2><button onclick="app.addW()" class="px-3 py-2 bg-purple-600 text-white rounded text-sm">+</button></div>';if(this.d.wish.length)for(const w of this.d.wish){const p=this.d.fam.find(f=>f.id===w.person);h+='<div class="bg-purple-50 border-2 rounded-xl p-2 mb-2 flex justify-between text-sm"><div><span class="px-2 py-0.5 bg-'+p.color+'-100 text-'+p.color+'-700 rounded text-xs">'+p.name+'</span><div class="font-bold mt-1">'+w.dish+'</div></div><div class="flex gap-1"><button onclick="app.planW(\''+w.id+'\')" class="px-2 py-1 bg-green-600 text-white rounded text-xs">✓</button><button onclick="app.del(\'wish\',\''+w.id+'\')" class="text-red-600">✕</button></div></div>'}else h+='<p class="text-gray-400 text-center py-6 text-sm">Tom</p>';h+='</div>'}else if(this.v==='shop'){const types=[{t:'food',n:'🛒 Mat',c:'orange'},{t:'basics',n:'📦 Bas',c:'blue'},{t:'big',n:'👕 Sällan',c:'purple'}];h+='<div class="space-y-3">';for(const ty of types){h+='<div class="bg-white rounded-xl shadow p-3"><h3 class="font-bold mb-2 text-sm">'+ty.n+'</h3>';if(this.d.shop[ty.t].length)for(const i of this.d.shop[ty.t])h+='<div class="flex items-center gap-2 p-2 bg-gray-50 rounded mb-1 text-sm"><input type="checkbox" '+(i.done?'checked':'')+' onchange="app.togS(\''+ty.t+'\',\''+i.id+'\')" class="w-4 h-4"><div class="flex-1'+(i.done?' line-through text-gray-400':'')+'"><div>'+i.name+'</div>'+(i.amt?'<div class="text-xs text-gray-600">'+i.amt+'</div>':'')+(i.bud?'<div class="text-xs text-purple-600">'+i.bud+' kr</div>':'')+'</div><button onclick="app.delS(\''+ty.t+'\',\''+i.id+'\')" class="text-red-600 text-xs">✕</button></div>';else h+='<p class="text-gray-400 text-xs">Tom</p>';h+='<button onclick="app.addS(\''+ty.t+'\')" class="w-full mt-2 px-3 py-2 bg-'+ty.c+'-600 text-white rounded text-sm">+</button></div>'}h+='</div>'}else if(this.v==='fut'){h+='<div class="bg-white rounded-xl shadow p-3"><div class="flex justify-between mb-3"><h2 class="font-bold">Framtid</h2><button onclick="app.addF()" class="px-3 py-2 bg-green-600 text-white rounded text-sm">+</button></div>';if(this.d.fut.length){const sorted=[...this.d.fut].sort((a,b)=>new Date(a.date)-new Date(b.date));for(const f of sorted){const p=f.person?this.d.fam.find(m=>m.id===f.person):null,days=Math.ceil((new Date(f.date)-new Date())/86400000);h+='<div class="bg-green-50 border-2 rounded-xl p-2 mb-2 flex justify-between text-sm"><div>'+(p?'<span class="px-2 py-0.5 bg-'+p.color+'-100 text-'+p.color+'-700 rounded text-xs">'+p.name+'</span>':'')+'<div class="font-bold mt-1">'+f.title+'</div><div class="text-xs text-gray-600">'+new Date(f.date).toLocaleDateString('sv-SE',{weekday:'long'})+(days>=0?' • Om '+days+' d':'')+'</div></div><button onclick="app.del(\'fut\',\''+f.id+'\')" class="text-red-600">✕</button></div>'}}else h+='<p class="text-gray-400 text-center py-6 text-sm">Tom</p>';h+='</div>'}h+='</div>';document.getElementById('app').innerHTML=h}};
+// Initialize Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyA8xpPsK_E2hXgU5D5qw612SFA5vIVOTGU",
+  authDomain: "ecofamily-ffa0a.firebaseapp.com",
+  databaseURL: "https://ecofamily-ffa0a-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "ecofamily-ffa0a",
+  storageBucket: "ecofamily-ffa0a.firebasestorage.app",
+  messagingSenderId: "325072897213",
+  appId: "1:325072897213:web:b2c6fa856b129e267963d4"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// App object
+const app = {
+  familyCode: null,
+  currentUser: null,
+  data: {
+    family: [
+      {id: 1, name: 'Jon', color: 'blue'},
+      {id: 2, name: 'Johanna', color: 'purple'},
+      {id: 3, name: 'Linnéa', color: 'pink'},
+      {id: 4, name: 'Rafael', color: 'green'},
+      {id: 5, name: 'Alicia', color: 'orange'}
+    ],
+    meals: [],
+    activities: [],
+    future: [],
+    wishes: [],
+    shopping: {food: [], basics: [], big: []}
+  },
+  view: 'week',
+  weekOffset: 0,
+
+  async init() {
+    const fc = localStorage.getItem('familyCode');
+    const cu = localStorage.getItem('currentUser');
+    
+    if (fc && cu) {
+      this.familyCode = fc;
+      this.currentUser = JSON.parse(cu);
+      await this.loadData();
+      this.setupListeners();
+      this.render();
+    } else {
+      this.showLogin();
+    }
+  },
+
+  showLogin() {
+    document.getElementById('app').innerHTML = `
+      <div class="max-w-md mx-auto mt-20 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8">
+          <h1 class="text-3xl font-bold text-center mb-2">🏡 EcoFamily</h1>
+          <p class="text-center text-gray-600 mb-8">Familjeplaneraren</p>
+          <div id="loginContent">
+            <div class="space-y-4">
+              <button onclick="app.showSetup()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl">
+                🆕 Skapa ny familj
+              </button>
+              <button onclick="app.showJoin()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl">
+                👨‍👩‍👧‍👦 Gå med i familj
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  showSetup() {
+    const familyOptions = this.data.family.map(m => 
+      `<option value="${m.id}">${m.name}</option>`
+    ).join('');
+
+    document.getElementById('loginContent').innerHTML = `
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-bold mb-2">Skapa familje-kod:</label>
+          <input type="text" id="familyCodeInput" placeholder="t.ex. ANDERSSON2026" 
+            class="w-full p-3 border-2 rounded-xl uppercase" value="ANDERSSON2026">
+          <p class="text-xs text-gray-600 mt-1">Dela med familjen</p>
+        </div>
+        <div>
+          <label class="block text-sm font-bold mb-2">Ditt namn:</label>
+          <select id="memberSelect" class="w-full p-3 border-2 rounded-xl">
+            ${familyOptions}
+          </select>
+        </div>
+        <button onclick="app.createFamily()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl">
+          Skapa →
+        </button>
+        <button onclick="app.showLogin()" class="w-full bg-gray-200 hover:bg-gray-300 font-bold py-3 rounded-xl">
+          ← Tillbaka
+        </button>
+      </div>
+    `;
+  },
+
+  showJoin() {
+    const familyOptions = this.data.family.map(m => 
+      `<option value="${m.id}">${m.name}</option>`
+    ).join('');
+
+    document.getElementById('loginContent').innerHTML = `
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-bold mb-2">Familje-kod:</label>
+          <input type="text" id="joinFamilyCode" placeholder="ANDERSSON2026" 
+            class="w-full p-3 border-2 rounded-xl uppercase">
+        </div>
+        <div>
+          <label class="block text-sm font-bold mb-2">Ditt namn:</label>
+          <select id="joinMemberSelect" class="w-full p-3 border-2 rounded-xl">
+            ${familyOptions}
+          </select>
+        </div>
+        <button onclick="app.joinFamily()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl">
+          Gå med →
+        </button>
+        <button onclick="app.showLogin()" class="w-full bg-gray-200 hover:bg-gray-300 font-bold py-3 rounded-xl">
+          ← Tillbaka
+        </button>
+      </div>
+    `;
+  },
+
+  async createFamily() {
+    const fc = document.getElementById('familyCodeInput').value.trim().toUpperCase();
+    const memberId = parseInt(document.getElementById('memberSelect').value);
+    
+    if (!fc || fc.length < 6) {
+      alert('Koden måste vara minst 6 tecken');
+      return;
+    }
+    
+    try {
+      const snapshot = await db.ref(`families/${fc}`).once('value');
+      if (snapshot.exists()) {
+        alert('Denna kod används redan');
+        return;
+      }
+      
+      this.familyCode = fc;
+      this.currentUser = this.data.family.find(m => m.id === memberId);
+      
+      localStorage.setItem('familyCode', fc);
+      localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+      
+      await db.ref(`families/${fc}`).set({
+        created: new Date().toISOString(),
+        sharedData: this.data
+      });
+      
+      await this.loadData();
+      this.setupListeners();
+      this.render();
+    } catch (error) {
+      console.error('Error creating family:', error);
+      alert('Kunde inte skapa familj. Kontrollera internetanslutning.');
+    }
+  },
+
+  async joinFamily() {
+    const fc = document.getElementById('joinFamilyCode').value.trim().toUpperCase();
+    const memberId = parseInt(document.getElementById('joinMemberSelect').value);
+    
+    if (!fc) {
+      alert('Ange familje-kod');
+      return;
+    }
+    
+    try {
+      const snapshot = await db.ref(`families/${fc}`).once('value');
+      if (!snapshot.exists()) {
+        alert('Kunde inte hitta familj med denna kod');
+        return;
+      }
+      
+      this.familyCode = fc;
+      this.currentUser = this.data.family.find(m => m.id === memberId);
+      
+      localStorage.setItem('familyCode', fc);
+      localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+      
+      await this.loadData();
+      this.setupListeners();
+      this.render();
+    } catch (error) {
+      console.error('Error joining family:', error);
+      alert('Kunde inte gå med i familj. Kontrollera internetanslutning.');
+    }
+  },
+
+  logout() {
+    if (confirm('Logga ut?')) {
+      localStorage.clear();
+      location.reload();
+    }
+  },
+
+  async loadData() {
+    if (!this.familyCode) return;
+    
+    try {
+      const snapshot = await db.ref(`families/${this.familyCode}/sharedData`).once('value');
+      if (snapshot.exists()) {
+        this.data = {...this.data, ...snapshot.val()};
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
+  },
+
+  setupListeners() {
+    if (!this.familyCode) return;
+    
+    db.ref(`families/${this.familyCode}/sharedData`).on('value', (snapshot) => {
+      if (snapshot.exists()) {
+        this.data = {...this.data, ...snapshot.val()};
+        this.render();
+      }
+    });
+  },
+
+  async saveData() {
+    if (!this.familyCode) return;
+    
+    try {
+      await db.ref(`families/${this.familyCode}/sharedData`).set(this.data);
+    } catch (error) {
+      console.error('Error saving data:', error);
+    }
+  },
+
+  getWeek(offset) {
+    const dates = [];
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(today.setDate(diff + offset * 7));
+    
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + i);
+      dates.push(date);
+    }
+    return dates;
+  },
+
+  formatDate(date) {
+    return date.toISOString().split('T')[0];
+  },
+
+  dayName(date) {
+    return ['Sön', 'Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör'][date.getDay()];
+  },
+
+  switchView(view) {
+    this.view = view;
+    this.render();
+  },
+
+  async addActivity() {
+    const title = prompt('Aktivitet:');
+    if (!title) return;
+    const person = parseInt(prompt('Vem? 1=Jon 2=Johanna 3=Linnéa 4=Rafael 5=Alicia'));
+    const date = prompt('Datum (YYYY-MM-DD):');
+    const time = prompt('Tid:', '17:00');
+    
+    this.data.activities.push({
+      id: Date.now().toString(),
+      title: title,
+      person: person,
+      date: date,
+      time: time,
+      addedBy: this.currentUser.name
+    });
+    
+    await this.saveData();
+    this.render();
+  },
+
+  async deleteItem(type, id) {
+    if (confirm('Ta bort?')) {
+      this.data[type] = this.data[type].filter(x => x.id !== id);
+      await this.saveData();
+      this.render();
+    }
+  },
+
+  render() {
+    const week = this.getWeek(this.weekOffset);
+    
+    let html = `
+      <div class="max-w-6xl mx-auto p-4">
+        <div class="bg-white rounded-xl shadow-lg p-4 mb-4">
+          <div class="flex justify-between items-center mb-3">
+            <div>
+              <h1 class="text-xl font-bold">EcoFamily</h1>
+              <p class="text-sm text-gray-600">${week[0].getDate()}/${week[0].getMonth()+1} - ${week[6].getDate()}/${week[6].getMonth()+1}</p>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="app.weekOffset--; app.render()" class="px-3 py-2 bg-gray-200 rounded text-sm">←</button>
+              <button onclick="app.weekOffset=0; app.render()" class="px-3 py-2 bg-blue-600 text-white rounded text-sm">Idag</button>
+              <button onclick="app.weekOffset++; app.render()" class="px-3 py-2 bg-gray-200 rounded text-sm">→</button>
+            </div>
+          </div>
+          
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex gap-2">
+              ${this.data.family.map(p => `<span class="px-2 py-1 bg-${p.color}-100 text-${p.color}-700 rounded-full text-xs">${p.name}</span>`).join('')}
+            </div>
+            <button onclick="app.logout()" class="px-3 py-1 bg-gray-200 rounded text-xs">Logga ut</button>
+          </div>
+          
+          <div class="p-2 bg-${this.currentUser.color}-50 rounded mb-3">
+            <div class="text-sm font-bold">${this.currentUser.name}</div>
+            <div class="text-xs text-gray-600">Kod: ${this.familyCode}</div>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+    `;
+    
+    for (const day of week) {
+      const dateStr = this.formatDate(day);
+      const activities = this.data.activities.filter(a => a.date === dateStr);
+      const meals = this.data.meals.filter(m => m.date === dateStr);
+      
+      html += `
+        <div class="bg-white rounded-xl shadow-lg p-4">
+          <div class="flex justify-between mb-3">
+            <h3 class="font-bold">${this.dayName(day)} ${day.getDate()}/${day.getMonth()+1}</h3>
+            <button onclick="app.addActivity()" class="px-3 py-1 bg-blue-600 text-white rounded text-sm">+</button>
+          </div>
+      `;
+      
+      for (const meal of meals) {
+        html += `
+          <div class="bg-orange-50 border border-orange-200 rounded p-2 mb-2 flex justify-between">
+            <div>
+              <div class="font-bold text-sm">${meal.dish}</div>
+              <div class="text-xs text-gray-600">${meal.portions} portioner</div>
+            </div>
+            <button onclick="app.deleteItem('meals', '${meal.id}')" class="text-red-600 text-sm">✕</button>
+          </div>
+        `;
+      }
+      
+      for (const activity of activities) {
+        const person = this.data.family.find(p => p.id === activity.person);
+        if (person) {
+          html += `
+            <div class="bg-${person.color}-50 border border-${person.color}-200 rounded p-2 mb-2 flex justify-between">
+              <div>
+                <div class="font-bold text-sm">${activity.title}</div>
+                <div class="text-xs text-gray-600">${activity.time} • ${person.name}</div>
+              </div>
+              <button onclick="app.deleteItem('activities', '${activity.id}')" class="text-red-600 text-sm">✕</button>
+            </div>
+          `;
+        }
+      }
+      
+      if (activities.length === 0 && meals.length === 0) {
+        html += '<p class="text-gray-400 text-sm text-center py-4">Inget planerat</p>';
+      }
+      
+      html += '</div>';
+    }
+    
+    html += '</div></div>';
+    
+    document.getElementById('app').innerHTML = html;
+  }
+};
+
+// Initialize app
 app.init();
 </script>
 </body>
